@@ -9,12 +9,48 @@
 pool:
   vmImage: 'ubuntu-latest'
 
-steps:
+name: 1.0$(rev:.r)
 
-- script: echo Hello, world!
-  displayName: 'Run a one-line script'
-
-- script: |
-    echo Add other tasks to build, test, and deploy your project.
-    echo See https://aka.ms/yaml
-  displayName: 'Run a multi-line script'
+stages:
+- stage: build
+  jobs:
+  - job: build
+    steps:
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'build'
+        projects: '**/*.csproj'
+        arguments: '-c Release'
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'test'
+        projects: 'test/Vecc.Prometheus.UnitTests/Vecc.Protheus.UnitTests.csproj'
+        arguments: '--no-build'
+    - task: DotNetCoreCLI@2
+      inputs:
+        command: 'pack'
+        packagesToPack: 'src/Vecc.Prometheus/Vecc.Prometheus.csproj'
+        configuration: 'Release'
+        nobuild: true
+        versioningScheme: 'byBuildNumber'
+        buildProperties: 'Authors="Vecc Solutions";Product="Vecc.Prometheus";PackageLicenseExpression="MIT";MaintainerEmail="edward@frakkingsweet.com";PackageProjectUrl="$(Build.Repository.Uri)";RepositoryUrl="$(Build.Repository.Uri)";RepositoryCommit=$(Build.SourceVersion) p-:RepositoryBranch="$(Build.SourceBranchName);RepositoryType=git'
+    - task: PublishPipelineArtifact@1
+      inputs:
+        targetPath: '$(Build.ArtifactStagingDirectory)'
+        artifact: 'package'
+        publishLocation: 'pipeline'
+- stage: deploy
+  jobs:
+  - job: deploy
+    steps:
+      - checkout: none
+      - task: DownloadPipelineArtifact@2
+        inputs:
+          artifact: package
+          path: package
+      - task: NuGetCommand@2
+        inputs:
+          command: 'push'
+          packagesToPush: 'package/*.nupkg;'
+          nuGetFeedType: 'external'
+          publishFeedCredentials: 'nuget.org-github-pipelines'
