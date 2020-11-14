@@ -9,7 +9,7 @@
 pool:
   vmImage: 'ubuntu-latest'
 
-name: 1.0$(rev:.r)
+name: 0.0$(rev:.r)
 
 stages:
 - stage: build
@@ -47,9 +47,9 @@ stages:
           inputs:
             artifact: package
             path: package
-        - task: DotNetCoreCLI@2
+        - task: NuGetCommand@2
           inputs:
             command: 'push'
-            packagesToPush: 'package/*.nupkg'
+            packagesToPush: 'package/*.nupkg;'
             nuGetFeedType: 'external'
             publishFeedCredentials: 'nuget.org-github-pipelines'
